@@ -1,8 +1,8 @@
-
-
 # Obsidian Hugo Upload With Python
 
 一个技术含量不高的脚本，用来配合我的 Hugo 发布流程。
+
+~~写得这么垃圾你是怎么好意思开源的~~
 
 ## 功能
 
