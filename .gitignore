@@ -1,0 +1,4 @@
+venv
+config.toml
+single.py
+.DS_Store

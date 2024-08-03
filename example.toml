@@ -1,0 +1,11 @@
+[source]
+    origin_directory = "你的 Obsidian 博客文件所在的目录"
+    destination_directory = "你的 Hugo 博客文件所在的目录"
+    image_directory = "你的 Obsidian 图片存放的目录"
+
+[s3]
+    endpoint_url = "你的 S3 endpoint, 注意有 https"
+    access_key = "你的 S3 Access Key"
+    secret_key = "你的 S3 Secret Key"
+    region = "你的 S3 存储桶所在地区"
+    bucket_name = "你的 S3 桶名"
