@@ -9,3 +9,10 @@
     secret_key = "你的 S3 Secret Key"
     region = "你的 S3 存储桶所在地区"
     bucket_name = "你的 S3 桶名"
+
+[backup_s3]
+    endpoint_url = "你的备份 S3 endpoint"
+    access_key = "你的备份 S3 Access Key"
+    secret_key = "你的备份 S3 Secret Key"
+    region = "你的备份 S3 存储桶所在地区"
+    bucket_name = "你的备份 S3 桶名"

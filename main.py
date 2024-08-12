@@ -29,18 +29,22 @@ def get_s3_client(endpoint_url, access_key, secret_key, region):
 
     return s3_client
 
-def upload_image(s3_client, bucket_name, image_path):
+def upload_image(s3_client, backup_s3_client, bucket_name, image_path):
     file_name = os.path.basename(image_path)
     s3_key = file_name  # 上传到存储桶的根目录
     try:
+        # 上传到主S3
         s3_client.upload_file(image_path, bucket_name, s3_key, ExtraArgs={'ACL': 'public-read'})
-        print(f"图片上传成功: {image_path} -> s3://{bucket_name}/{s3_key}")
-        return f'https://img.yoghurtlee.com/{file_name}'
+        print(f"图片上传成功到主S3: {image_path} -> s3://{bucket_name}/{s3_key}")
+        # 上传到备份S3
+        backup_s3_client.upload_file(image_path, bucket_name, s3_key, ExtraArgs={'ACL': 'public-read'})
+        print(f"图片上传成功到备份S3: {image_path} -> s3://{bucket_name}/{s3_key}")
+        return f'https://img.chlorinechan.top/{file_name}'
     except Exception as e:
         print(f"图片上传失败: {e}")
         return None
 
-def collect_image_urls(markdown_file, image_directory, s3_client, bucket_name):
+def collect_image_urls(markdown_file, image_directory, s3_client, backup_s3_client, bucket_name):
     image_urls = {}
     image_pattern = re.compile(r'!\[.*?\]\((.*?)\)')
     
@@ -51,7 +55,7 @@ def collect_image_urls(markdown_file, image_directory, s3_client, bucket_name):
         for image_name in set(matches):
             image_path = Path(image_directory) / image_name
             if image_path.exists() and image_name not in image_urls:
-                image_url = upload_image(s3_client, bucket_name, image_path)
+                image_url = upload_image(s3_client, backup_s3_client, bucket_name, image_path)
                 if image_url:
                     image_urls[image_name] = image_url
     return image_urls
@@ -65,7 +69,7 @@ def update_markdown_file(markdown_file, image_urls, destination_directory):
 
     def replace_image_link(match):
         image_name = os.path.basename(match.group(1))
-        return f'![{match.group(0).split("(")[0][2:-1]}](https://img.yoghurtlee.com/{image_name})'
+        return f'![{match.group(0).split("(")[0][2:-1]}](https://img.chlorinechan.top/{image_name})'
 
     content = image_pattern.sub(replace_image_link, content)
 
@@ -117,21 +121,29 @@ if __name__ == "__main__":
     path_b = config["source"]["destination_directory"]
     image_directory = config["source"]["image_directory"]
 
-    # S3 配置
+    # 主S3 配置
     endpoint_url = config["s3"]["endpoint_url"]
     access_key = config["s3"]["access_key"]
     secret_key = config["s3"]["secret_key"]
     region = config["s3"]["region"]
     bucket_name = config["s3"]["bucket_name"]
 
+    # 备份S3 配置
+    backup_endpoint_url = config["backup_s3"]["endpoint_url"]
+    backup_access_key = config["backup_s3"]["access_key"]
+    backup_secret_key = config["backup_s3"]["secret_key"]
+    backup_region = config["backup_s3"]["region"]
+    backup_bucket_name = config["backup_s3"]["bucket_name"]
+
     # 获取S3客户端
     s3_client = get_s3_client(endpoint_url, access_key, secret_key, region)
+    backup_s3_client = get_s3_client(backup_endpoint_url, backup_access_key, backup_secret_key, backup_region)
 
     # 查找最新的Markdown文件
     latest_file = find_latest_file(path_a, '.md')
     if latest_file:
         # 收集图片URL
-        image_urls = collect_image_urls(latest_file, image_directory, s3_client, bucket_name)
+        image_urls = collect_image_urls(latest_file, image_directory, s3_client, backup_s3_client, bucket_name)
         # 更新Markdown文件中的图片链接
         update_markdown_file(latest_file, image_urls, path_b)
     else:
