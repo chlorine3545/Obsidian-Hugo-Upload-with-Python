@@ -29,7 +29,7 @@ def get_s3_client(endpoint_url, access_key, secret_key, region):
 
     return s3_client
 
-def upload_image(s3_client, backup_s3_client, bucket_name, image_path):
+def upload_image(s3_client, backup_s3_client, bucket_name, backup_bucket_name, image_path):
     file_name = os.path.basename(image_path)
     s3_key = file_name  # 上传到存储桶的根目录
     try:
@@ -37,12 +37,13 @@ def upload_image(s3_client, backup_s3_client, bucket_name, image_path):
         s3_client.upload_file(image_path, bucket_name, s3_key, ExtraArgs={'ACL': 'public-read'})
         print(f"图片上传成功到主S3: {image_path} -> s3://{bucket_name}/{s3_key}")
         # 上传到备份S3
-        backup_s3_client.upload_file(image_path, bucket_name, s3_key, ExtraArgs={'ACL': 'public-read'})
-        print(f"图片上传成功到备份S3: {image_path} -> s3://{bucket_name}/{s3_key}")
+        backup_s3_client.upload_file(image_path, backup_bucket_name, s3_key, ExtraArgs={'ACL': 'public-read'})
+        print(f"图片上传成功到备份S3: {image_path} -> s3://{backup_bucket_name}/{s3_key}")
         return f'https://img.chlorinechan.top/{file_name}'
     except Exception as e:
         print(f"图片上传失败: {e}")
         return None
+
 
 def collect_image_urls(markdown_file, image_directory, s3_client, backup_s3_client, bucket_name):
     image_urls = {}
@@ -55,7 +56,8 @@ def collect_image_urls(markdown_file, image_directory, s3_client, backup_s3_clie
         for image_name in set(matches):
             image_path = Path(image_directory) / image_name
             if image_path.exists() and image_name not in image_urls:
-                image_url = upload_image(s3_client, backup_s3_client, bucket_name, image_path)
+                image_url = upload_image(s3_client, backup_s3_client, bucket_name, backup_bucket_name, image_path)
+
                 if image_url:
                     image_urls[image_name] = image_url
     return image_urls
@@ -77,11 +79,11 @@ def update_markdown_file(markdown_file, image_urls, destination_directory):
     content = link_pattern.sub(r'[\2]({{< relref "\1.md" >}})', content)
 
     # 替换 GitHub 风格警告 为 Hugo 风格警告
-    alert_pattern = re.compile(r'^>\s*\[!(.*?)\]\s*\n((?:>.*\n)*)', re.MULTILINE | re.DOTALL)
+    alert_pattern = re.compile(r'^>\s*\[!(.*?)\]\s*\n((?:>.*\n?)*)', re.MULTILINE)
     def replace_alert(match):
-        alert_type = match.group(1).strip()
-        content = match.group(2).replace('>', '').strip()
-        return f'{{{{< alert "{alert_type}" >}}}}\n{content}\n{{{{< /alert >}}}}'
+        alert_type = match.group(1).strip().lower()
+        alert_content = match.group(2).replace('>', '').strip()
+        return f'{{{{< alert "{alert_type}" >}}}}\n{alert_content}\n{{{{< /alert >}}}}\n'
     
     content = alert_pattern.sub(replace_alert, content)
 
