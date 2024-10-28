@@ -65,7 +65,8 @@ def collect_image_urls(markdown_file, image_directory, s3_client, backup_s3_clie
 def update_markdown_file(markdown_file, image_urls, destination_directory):
     image_pattern = re.compile(r'!\[.*?\]\((.*?)\)')
     link_pattern = re.compile(r'\[\[(.*?)\|(.*?)\]\]')
-    
+    single_link_pattern = re.compile(r'\[\[(.*?)\]\]')
+
     with open(markdown_file, 'r', encoding='utf-8') as file:
         content = file.read()
 
@@ -77,6 +78,9 @@ def update_markdown_file(markdown_file, image_urls, destination_directory):
 
     # 替换 [[文件名|显示文本]] 为 Hugo 风格的短代码链接
     content = link_pattern.sub(r'[\2]({{< relref "\1.md" >}})', content)
+
+    # 替换 [[文件名]] 为 Hugo 风格的短代码链接
+    content = single_link_pattern.sub(r'[\1]({{< relref "\1.md" >}})', content)
 
     # 替换 GitHub 风格警告 为 Hugo 风格警告
     alert_pattern = re.compile(r'^>\s*\[!(.*?)\]\s*\n((?:>.*\n?)*)', re.MULTILINE)
